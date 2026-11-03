@@ -136,6 +136,10 @@ agent = create_deep_agent(
     ],
     skills=["/skills/"],
     backend=FilesystemBackend(root_dir=".", virtual_mode=True),
+    permissions=[FilesystemPermission(operations=["write"], paths=["/incident/**"], mode="deny")],
+    interrupt_on={"propose_containment": {"allowed_decisions": ["approve", "reject"]}},
+    middleware=[ModelCallLimitMiddleware(run_limit=80)],
+    checkpointer=InMemorySaver(),
 )
 
 if __name__ == "__main__":
