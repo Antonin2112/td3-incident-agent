@@ -1,0 +1,17 @@
+# Environnement virtuel Python
+.venv/
+venv/
+ENV/
+
+# Caches et fichiers temporaires Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Clés d'API et variables d'environnement
+.env
+*.key
+
+# Caches d'IDE
+.vscode/
+.idea/
