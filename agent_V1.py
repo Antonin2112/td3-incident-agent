@@ -1,6 +1,9 @@
+from dotenv import load_dotenv
+load_dotenv()
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain_ollama import ChatOllama
+
 
 agent = create_deep_agent(
     model=ChatOllama(model="nemotron-3-nano:30b-cloud", temperature=0),

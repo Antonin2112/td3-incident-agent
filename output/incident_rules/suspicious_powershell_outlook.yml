@@ -1,0 +1,28 @@
+title: Suspicious PowerShell Execution from Outlook
+id: d57a3c0b-5a7e-4b1a-9b3c-8c9e5f2a7b1d
+status: test
+description: Detects PowerShell execution with hidden window and bypass policy, especially when launched from Outlook
+author: Incident Analyst
+date: 2024-11-16
+logsource:
+  product: windows
+  service: microsoft-powershell
+detection:
+  selection:
+    EventID: 4104
+    Channel: Microsoft-Windows-PowerShell/Operational
+    CommandLine|contains| '-ExecutionPolicy Bypass'
+    CommandLine|contains| '-WindowStyle Hidden'
+  selection2:
+    EventID: 4688
+    Image|endswith: '\OUTLOOK.EXE'
+    CommandLine|contains: 'powershell.exe'
+  condition: selection or selection2
+falsepositives:
+  - Legitimate administrative scripts launched from Outlook
+level: high
+tags:
+  - attack.execution
+  - T1059.001
+  - initial-access
+  - incident-response

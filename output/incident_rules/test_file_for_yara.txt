@@ -1,0 +1,2 @@
+This is a test file for YARA rule testing.
+It contains the word "Write" and "Host" which should match the test YARA rule.

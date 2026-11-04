@@ -1,13 +1,18 @@
+from dotenv import load_dotenv
+load_dotenv()
 import base64
 from datetime import datetime
 from pathlib import Path
 import zoneinfo
 import requests
 from langchain.tools import tool
-from deepagents import create_deep_agent
+from deepagents import create_deep_agent, FilesystemPermission
 from deepagents.backends import FilesystemBackend
+from langchain.agents.middleware import ModelCallLimitMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain_ollama import ChatOllama
 from langgraph.types import Command
+
 
 @tool
 def verify_ioc(value: str) -> str:
@@ -144,18 +149,25 @@ agent = create_deep_agent(
 )
 
 if __name__ == "__main__":
-    print("--- Executing Agent with Complete Step 2 Toolset ---")
-    answer = agent.invoke({
-        "messages": [
-            {
-                "role": "user",
-                "content": (
-                    "Investigate ticket /incident/ticket_INC-2026-0417.md. "
-                    "Use your available skills to extract IOCs, map MITRE techniques, test rules, "
-                    "and propose containment measures"
-                ),
-            }
-        ]
-    })
+    print("--- Executing Agent (Step 4: Human Approval Loop) ---")
+
+    config = {"configurable": {"thread_id": "td3"}}
+
+    ticket_prompt = (
+        "Investigate ticket /incident/ticket_INC-2026-0417.md. "
+        "Use your available skills to extract IOCs, map MITRE techniques, test rules, "
+        "and propose containment measures. Generate the final report."
+    )
+
+    result = agent.invoke({"messages": [{"role": "user", "content": ticket_prompt}]}, config=config)
+
+    while "__interrupt__" in result:
+        decisions = []
+        for request in result["__interrupt__"][0].value["action_requests"]:
+            ok = input(f"\n[INTERRUPTION] L'agent demande l'exécution de :\nOutil : {request['name']}\nArguments : {request['args']}\nApprouver ? (y/n) ") == "y"
+            decisions.append({"type": "approve" if ok else "reject"})
+        
+        # Command(resume=...) relance l'agent avec tes décisions : les actions validées s'exécutent, les autres sont refusées et l'agent en est informé[cite: 54, 55].
+        result = agent.invoke(Command(resume={"decisions": decisions}), config=config)
     print("\n--- Final Output ---")
-    print(answer["messages"][-1].content)
+    print(result["messages"][-1].content)
