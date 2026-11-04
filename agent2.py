@@ -7,6 +7,7 @@ from langchain.tools import tool
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain_ollama import ChatOllama
+from langgraph.types import Command
 
 @tool
 def verify_ioc(value: str) -> str:
