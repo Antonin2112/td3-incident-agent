@@ -1,0 +1,23 @@
+title: Suspicious PowerShell Execution from Email Attachment
+id: d59f8b3c-5a7e-4b1a-9b3c-8e7f2a1b0cde
+status: test
+description: Detects PowerShell execution with hidden/obfuscated flags from email client processes (Outlook)
+author: SOC Level-2 Analyst
+date: 2026-01-15
+logsource:
+  product: windows
+  service: sysmon
+detection:
+  selection:
+    EventID: 1
+    Image|startswith: 'C:\Program Files\Microsoft Office'
+    CommandLine|contains: '-ExecutionPolicy Bypass'
+  condition: selection
+level: high
+falsepositives:
+  - Legitimate IT administration using Outlook macros
+tags:
+  - mitre.t1059
+  - mitre.t1059.001
+  - mitre.t1566.002
+  - mitre.t1071.001
