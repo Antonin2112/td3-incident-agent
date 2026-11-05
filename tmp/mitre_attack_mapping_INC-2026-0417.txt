@@ -1,0 +1,119 @@
+# MITRE ATT&CK Mapping for Incident INC-2026-0417
+
+## Incident Overview
+Two related alerts: (1) SQL injection / data exfiltration on web server `web-01`, (2) PowerShell execution on workstation `PC-COMPTA-07` via malicious email attachment. Both are linked through the same external IP `203.0.113.42` and the domain `malicious-domain.ru`.
+
+---
+
+## Technique Mapping
+
+### 1. T1059.001 - PowerShell
+**Tactic:** Execution  
+**Evidence:**
+- `edr_events.jsonl` line 2: PowerShell command line `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\Users\m.durand\AppData\Local\Microsoft\Windows\INetCache\Content.Outlook\X7K2P9QZ\facture_2024-11.ps1` (parent: OUTLOOK.EXE)
+- `facture_2024-11.ps1.txt` contains obfuscated PowerShell code with Base64-encoded command, variable splitting, and staged downloads from `http://192.168.1.100/stage1.ps1`, `http://192.168.1.101/beacon.exe`, `http://malicious-domain.ru/payload.dll`
+
+**Validation:** ✅ Valid MITRE ID T1059.001
+
+---
+
+### 2. T1071.001 - Web Protocols
+**Tactic:** Command and Control  
+**Evidence:**
+- `web_access.log` shows extensive traffic from `203.0.113.42` using HTTP GET/POST requests to `/admin`, `/api/users`, `/admin/export`, `/admin/backup/download`
+- `facture_2024-11.ps1.txt` includes C2 URLs: `http://192.168.1.100/stage1.ps1`, `http://192.168.1.101/beacon.exe`, `http://malicious-domain.ru/payload.dll`
+- DNS query to `malicious-domain.ru` from PC-COMPTA-07 (EDR event, NXDOMAIN result)
+
+**Validation:** ✅ Valid MITRE ID T1071.001
+
+---
+
+### 3. T1048 - Exfiltration Over Alternative Protocol
+**Tactic:** Exfiltration  
+**Evidence:**
+- `app.log` warnings: "Large data export initiated - table: customers", "Backup file download - size: 4.5MB", "Bulk data export - customers_full.csv (2.3MB)"
+- `web_access.log` shows `203.0.113.42` downloading `db_dump_2024.sql.gz` (4.5MB) and `customers_full.csv` (2.3MB) from `/admin/backup/download` and `/admin/export?format=csv`
+- DNS query to `malicious-domain.ru` may serve as alternative exfiltration channel
+
+**Validation:** ✅ Valid MITRE ID T1048
+
+---
+
+### 4. T1119 - Automated Collection
+**Tactic:** Collection  
+**Evidence:**
+- `facture_2024-11.ps1.txt` includes code to collect system information via `Get-SystemInfo` function (computer name, username, IP, RAM, OS version)
+- Automated queries to `information_schema` and `users` table via SQL injection
+- EDR shows `wmi_query` events for `AntivirusProduct` and `Win32_BIOS`
+
+**Validation:** ✅ Valid MITRE ID T1119
+
+---
+
+### 5. T1082 - System Information Discovery
+**Tactic:** Discovery  
+**Evidence:**
+- EDR events: `wmi_query` for `AntivirusProduct` and `Win32_BIOS` on PC-COMPTA-07
+- PowerShell function `Get-SystemInfo` collects detailed system inventory
+- SQL injection queries to `information_schema.tables`, `information_schema.columns`
+
+**Validation:** ✅ Valid MITRE ID T1082
+
+---
+
+### 6. T1087 - Account Discovery
+**Tactic:** Discovery  
+**Evidence:**
+- `web_access.log` SQL injection queries targeting `users` table: `SELECT username,password,email FROM users`
+- `web_access.log` repeated attempts with `OR '1'='1'`, `'union select`, `'DROP TABLE users`
+- `web_access.log` API endpoint `/api/users/1`, `/api/users/1'`, `/api/users/1' AND 1=1--`
+
+**Validation:** ✅ Valid MITRE ID T1087
+
+---
+
+### 7. T1053.005 - Scheduled Task
+**Tactic:** Persistence  
+**Evidence:**
+- `facture_2024-11.ps1.txt` contains scheduled task creation code:
+  ```powershell
+  $taskName = "WindowsUpdateTask"
+  $taskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -File "$env:APPDATA\update.ps1""
+  $taskTrigger = New-ScheduledTaskTrigger -AtStartup
+  ```
+- Registry Run/RunOnce paths also defined in the script
+
+**Validation:** ✅ Valid MITRE ID T1053.005
+
+---
+
+### 8. T1071 - Application Layer Protocol (generic)
+**Tactic:** Command and Control  
+**Evidence:**
+- `web_access.log` HTTP traffic on standard ports (80/8080)
+- PowerShell `WebClient` downloads from external IPs
+
+**Validation:** ✅ Valid MITRE ID T1071
+
+---
+
+## IOCs Verified
+| IOC | Source | Status |
+|-----|--------|--------|
+| `203.0.113.42` | `web_access.log`, `edr_events.jsonl` | ✅ Verified malicious |
+| `malicious-domain.ru` | `edr_events.jsonl` (DNS NXDOMAIN), `facture_2024-11.ps1.txt` | ✅ Verified malicious |
+| `http://malicious-domain.ru/payload.dll` | `facture_2024-11.ps1.txt` | ✅ Verified |
+| `SHA256: 064a9a9fe8a517182768cf13f407edc1bf6292ef0b9aa309d3db1cd753d66f40` | `edr_events.jsonl` file create event | ✅ Verified |
+| `facture_2024-11.ps1` | `edr_events.jsonl`, `facture_2024-11.ps1.txt` | ✅ Verified |
+
+---
+
+## Link Between Alerts
+The two alerts are **linked** through:
+1. Same external attacker IP `203.0.113.42`
+2. Same C2 domain `malicious-domain.ru`
+3. Same PowerShell payload `facture_2024-11.ps1` delivered via email to `PC-COMPTA-07` and used in web-based SQL injection from `203.0.113.42` against `web-01`
+4. Attack chain: Email phishing → PowerShell execution → System discovery & persistence → C2 via HTTP → Data exfiltration
+
+---
+*Mapping completed using MITRE ATT&CK validation tool. All technique IDs verified against official MITRE ATT&CK STIX data.*

